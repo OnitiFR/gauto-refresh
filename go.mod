@@ -1,4 +1,4 @@
-module local/gauto-refresh
+module github.com/OnitiFR/gauto-refresh
 
 go 1.16
 
