@@ -7,20 +7,24 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 func serveScript(w http.ResponseWriter, req *http.Request) {
+	str := `
+	const es = new EventSource(sse_url)
+	es.addEventListener("ask-refresh", (ev) => {
+		###
+	})
+	`
+	str = strings.Replace(str, "###", Action, 1)
+
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "no-cache")
 	fmt.Fprintf(w, "var sse_url='http://%s/sse'", ListenPort)
-	w.Write([]byte(`
-const es = new EventSource(sse_url)
-es.addEventListener("ask-refresh", (ev) => {
-	location.reload()
-})
-	`))
+	w.Write([]byte(str))
 }
 
 func serveSSE(w http.ResponseWriter, req *http.Request) {
