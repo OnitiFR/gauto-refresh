@@ -6,9 +6,8 @@ Automatically refresh your web pages when saving files
 ## Install
 Install go (sometimes named "golang") and then:
 ```sh
-go get -u github.com/OnitiFR/gauto-refresh
-# or, for Go 1.17+
-go install github.com/OnitiFR/gauto-refresh@latest
+go install github.com/OnitiFR/gauto-refresh@latest (Go 1.16+)
+go get -u github.com/OnitiFR/gauto-refresh (Go 1.15-)
 ```
 
 See `gauto-refresh` -h for help.
