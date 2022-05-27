@@ -7,7 +7,7 @@ import (
 
 type FlagValues []string
 
-const Version = "0.0.5"
+const Version = "0.0.6"
 
 var ListenPort string
 var Files FlagValues
@@ -43,7 +43,7 @@ func main() {
 	Action = *action
 
 	fmt.Println("Watching", Files)
-	fmt.Println("Add the follow line to your HTML page:")
+	fmt.Println("Add the following line to your HTML page:")
 	fmt.Println("--")
 	if *conditional {
 		fmt.Println(`<script>
