@@ -8,9 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
+
+var broker *Broker[bool]
 
 func serveScript(w http.ResponseWriter, req *http.Request) {
 	str := `
@@ -28,8 +31,70 @@ func serveScript(w http.ResponseWriter, req *http.Request) {
 }
 
 func serveSSE(w http.ResponseWriter, req *http.Request) {
+
+	if req.Method == "OPTIONS" {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET")
+		return
+	}
+
+	if req.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	log.Println("client connected")
 
+	flusher, ok := w.(http.Flusher)
+
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
+
+	msgCh := broker.Subscribe()
+	defer broker.Unsubscribe(msgCh)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	refreshRequest := make(chan bool, 1)
+	refreshRequest <- true
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-msgCh:
+				go func() {
+					select {
+					case <-refreshRequest:
+					default:
+						DebugLog("already asked for refresh, ignore")
+						return
+					}
+
+					time.Sleep(time.Duration(Delay) * time.Millisecond)
+					log.Println("ask client refresh")
+					fmt.Fprintf(w, "event: ask-refresh\n")
+					fmt.Fprintf(w, "data: {}\n")
+					fmt.Fprintf(w, "\n\n")
+					flusher.Flush()
+
+					refreshRequest <- true
+				}()
+			case <-req.Context().Done():
+				done <- true
+			}
+		}
+	}()
+	<-done
+	log.Println("client disconnected")
+}
+
+func startWatchers() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -37,6 +102,7 @@ func serveSSE(w http.ResponseWriter, req *http.Request) {
 	defer watcher.Close()
 
 	for _, file := range Files {
+		DebugLog("from '%s' …", file)
 		stat, err := os.Stat(file)
 		if err != nil {
 			log.Fatal(err)
@@ -49,6 +115,7 @@ func serveSSE(w http.ResponseWriter, req *http.Request) {
 				}
 				if fi.Mode().IsDir() {
 					err := watcher.Add(path)
+					DebugLog("… watching dir '%s'", path)
 					if err != nil {
 						log.Printf("error: %s", err)
 					}
@@ -57,56 +124,41 @@ func serveSSE(w http.ResponseWriter, req *http.Request) {
 			})
 		} else {
 			err = watcher.Add(file)
+			DebugLog("… watching file '%s'", file)
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
 	}
 
-	flusher, ok := w.(http.Flusher)
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			log.Println("event:", event)
 
-	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				DebugLog("change detected")
+				broker.Publish(true)
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			log.Println("error:", err)
+		}
 	}
 
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				log.Println("event:", event)
-
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("ask client refresh")
-					fmt.Fprintf(w, "event: ask-refresh\n")
-					fmt.Fprintf(w, "data: {}\n")
-					fmt.Fprintf(w, "\n\n")
-					flusher.Flush()
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
-			case <-req.Context().Done():
-				done <- true
-			}
-		}
-	}()
-	<-done
-	log.Println("client disconnected")
 }
 
 func StartServer() {
+	broker = NewBroker[bool]()
+	go broker.Start()
+
+	go startWatchers()
+
 	http.HandleFunc("/sse", serveSSE)
 	http.HandleFunc("/refresh", serveScript)
 	err := http.ListenAndServe(ListenPort, nil)
