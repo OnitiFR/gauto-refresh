@@ -7,7 +7,7 @@ import (
 
 type FlagValues []string
 
-const Version = "0.0.7"
+const Version = "0.0.8"
 
 var ListenPort string
 var Files FlagValues
@@ -61,7 +61,7 @@ func main() {
 	fmt.Println("--")
 	if *conditional {
 		fmt.Println(`<script>
-  if (location.hostname === 'localhost') document.write('<script src="http://localhost:8888/refresh"></' + 'script>')
+  if (location.hostname === 'localhost') document.write('<script defer src="http://localhost:8888/refresh"></' + 'script>')
 </script>`)
 	} else {
 		fmt.Printf("<script src=\"http://%s/refresh\"></script>\n", ListenPort)
