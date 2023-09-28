@@ -9,8 +9,6 @@ Install go (sometimes named "golang") and then:
 go install github.com/OnitiFR/gauto-refresh@latest
 ```
 
-See `gauto-refresh` -h for help.
-
 ## Help
 ```
   -a string
@@ -27,7 +25,7 @@ See `gauto-refresh` -h for help.
 
 ```
 
-- Ignores: .git, .svn, node_modules, vendor
+- Ignores: `.git, .svn, node_modules, vendor`
 
 ## TODO
 - detect new folders and automatically add them to the watch list
