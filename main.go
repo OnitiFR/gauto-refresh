@@ -7,7 +7,7 @@ import (
 
 type FlagValues []string
 
-const Version = "0.0.8"
+const Version = "0.0.9"
 
 var ListenPort string
 var Files FlagValues

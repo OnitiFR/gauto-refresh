@@ -15,6 +15,13 @@ import (
 
 var broker *Broker[bool]
 
+var exclude = []string{
+	".git",
+	".svn",
+	"node_modules",
+	"vendor",
+}
+
 func serveScript(w http.ResponseWriter, req *http.Request) {
 	str := `
 	const es = new EventSource(sse_url)
@@ -114,6 +121,13 @@ func startWatchers() {
 					return err
 				}
 				if fi.Mode().IsDir() {
+					for _, e := range exclude {
+						if fi.Name() == e {
+							DebugLog("… skip dir '%s'", path)
+							return filepath.SkipDir
+						}
+					}
+
 					err := watcher.Add(path)
 					DebugLog("… watching dir '%s'", path)
 					if err != nil {
