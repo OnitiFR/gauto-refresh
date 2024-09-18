@@ -7,7 +7,7 @@ import (
 
 type FlagValues []string
 
-const Version = "0.0.9"
+const Version = "0.0.10"
 
 var ListenPort string
 var Files FlagValues
@@ -33,6 +33,7 @@ func DebugLog(format string, args ...interface{}) {
 
 func main() {
 	port := flag.Int("p", 8888, "listening port")
+	open := flag.Bool("i", false, "listen on all interfaces")
 	flag.Var(&Files, "f", "file to watch (mutliple -f accepted, default = current dir)")
 	conditional := flag.Bool("c", false, "display a conditional script sample")
 	action := flag.String("a", "location.reload()", "custom action")
@@ -50,7 +51,12 @@ func main() {
 		Files = append(Files, ".")
 	}
 
-	ListenPort = fmt.Sprintf("localhost:%d", *port)
+	if *open {
+		ListenPort = fmt.Sprintf(":%d", *port)
+	} else {
+		ListenPort = fmt.Sprintf("localhost:%d", *port)
+	}
+
 	Action = *action
 	Debug = *debug
 	Delay = *delay
@@ -64,7 +70,11 @@ func main() {
   if (location.hostname === 'localhost') document.write('<script defer src="http://localhost:8888/refresh"></' + 'script>')
 </script>`)
 	} else {
-		fmt.Printf("<script src=\"http://%s/refresh\"></script>\n", ListenPort)
+		if *open {
+			fmt.Printf("<script src=\"http://<xxx>%s/refresh\"></script>\n", ListenPort)
+		} else {
+			fmt.Printf("<script src=\"http://%s/refresh\"></script>\n", ListenPort)
+		}
 	}
 	fmt.Println("--")
 	StartServer()

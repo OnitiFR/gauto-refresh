@@ -175,6 +175,7 @@ func StartServer() {
 
 	http.HandleFunc("/sse", serveSSE)
 	http.HandleFunc("/refresh", serveScript)
+	DebugLog("listening on %s", ListenPort)
 	err := http.ListenAndServe(ListenPort, nil)
 	if err != nil {
 		log.Fatal(err)
