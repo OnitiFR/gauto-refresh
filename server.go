@@ -33,7 +33,7 @@ func serveScript(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "no-cache")
-	fmt.Fprintf(w, "var sse_url='http://%s/sse'", ListenPort)
+	fmt.Fprintf(w, "var sse_url='%s/sse'", BaseURL)
 	w.Write([]byte(str))
 }
 
